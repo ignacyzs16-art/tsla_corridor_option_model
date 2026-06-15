@@ -1,137 +1,71 @@
-Analiza opcji egzotycznej i porównanie metod
+Exotic Option Pricing and Method Comparison
 ================
 
-## 1.1. Wstęp i cel
+## 1.1. Introduction and Objective
 
-Faktycznym celem projektu było praktyczne zderzenie teoretycznego modelu
-wyceny z surowymi danymi rynkowymi dla instrumentu o ekstremalnej
-zmienności. Zamiast opierać się na wyidealizowanych założeniach i
-sztucznie wygenerowanych parametrach, wykonaliśmy następujący,
-czteroetapowy proces weryfikacyjny:
+The primary objective of this project was to confront a theoretical pricing model with raw market data for an asset characterized by extreme volatility. Instead of relying on idealized assumptions and artificially generated parameters, we implemented the following four-stage verification process:
 
-- Ekstrakcja i kalibracja danych: Pobraliśmy rzeczywiste szeregi czasowe
-  z ostatnich dwóch lat dla akcji Tesla (TSLA) i na ich podstawie
-  wyestymowaliśmy historyczną zmienność logarytmicznych stóp zwrotu,
-  która stanowiła główny parametr wejściowy symulacji.
+- **Data Extraction and Calibration:** We retrieved actual time-series data from the past two years for Tesla (TSLA) stock. Based on this data, we estimated the historical volatility of log returns, which served as the primary input parameter for the simulation.
 
-- Implementacja silnika Monte Carlo: Zaprogramowaliśmy od podstaw
-  generator trajektorii cen oparty na stochastycznym modelu
-  Geometrycznego Ruchu Browna (GBM). W celu optymalizacji i zmniejszenia
-  błędu standardowego, zastosowaliśmy technikę redukcji wariancji
-  (zmienne antytetyczne).
+- **Monte Carlo Engine Implementation:** We programmed a price trajectory generator from scratch based on the stochastic Geometric Brownian Motion (GBM) model. To optimize the simulation and minimize the standard error, we utilized a variance reduction technique (antithetic variates).
 
-- Modelowanie struktury wypłaty: Zdefiniowaliśmy warunki brzegowe dla
-  europejskiej opcji korytarzowej typu Asset-or-Nothing (z barierą dolną
-  na poziomie 85% i górną 115% bieżącej ceny akcji), która wygasa bez
-  wartości, jeśli cena końcowa znajdzie się poza tym przedziałem.
+- **Payout Structure Modeling:** We defined the boundary conditions for a European Asset-or-Nothing corridor option (with a lower barrier at 85% and an upper barrier at 115% of the current stock price). The option expires worthless if the terminal price falls outside this range.
 
-- Walidacja krzyżowa (Cross-validation): Skonfrontowaliśmy wynik
-  uzyskany na drodze symulacji numerycznej ze ścisłym rozwiązaniem
-  analitycznym, bazującym na rozszerzeniach modelu Blacka-Scholesa dla
-  opcji egzotycznych.
+- **Cross-Validation:** We confronted the numerical results obtained via Monte Carlo simulation with an exact analytical solution based on Black-Scholes extensions for exotic options.
 
-## 1.2. Dla kogo?
+## 1.2. Target Audience
 
-- **Analityków finansowych**: **Quants** - Najważniejsza grupa, która
-  charakteryzuje się budową modeli matematycznych, które dzięki pomocy
-  R/Python wyceniają instrumenty finansowe. Wymagane umiejętnośći to:
-  Implementacja wzorów, stworzenie symulacji i techniki optymalizacji.
-  Podobnie projket ma zastosowanie dla specjalistów zarządzania
-  ryzykiem, którzy muszą rozumieć co sie stanie z portfelem gdy rynek
-  oszaleje. Dodatkowo badanie dla ryzyka ma za zadanie wykazanie
-  trudności w Hedingu opcji “All or nothing” Projekt również może
-  pasować dla Traderów (wycena) oraz studentów (nauka)
+- **Financial Analysts / Quantitative Analysts (Quants):** The primary target group, specializing in building mathematical models to price financial instruments using R or Python. Required skills include formula implementation, simulation design, and optimization techniques.
+- **Risk Management Specialists:** Professionals who need to evaluate portfolio behavior during extreme market shocks. Additionally, this study highlights the distinct hedging challenges associated with "All-or-Nothing" structures.
+- **Traders and Students:** For option pricing applications and advanced educational purposes in quantitative finance.
 
-## 1.3. Dlaczego Tesla?
+## 1.3. Why Tesla?
 
-Tesla charakteryzuje się wysoką zmiennością historyczną i brakiem wypłat
-dywidendy. Stanowi to doskonałe środowisko do testowania wrażliwości
-modelu korytarzowego. Wysoka dynamika zmian cen drastycznie zwiększa
-prawdopodobieństwo wyjścia kursu poza ustalony przedział, co z kolei
-powinno znaleźć odzwierciedlenie w relatywnie niskiej premii za opcję.
+Tesla exhibits high historical volatility and pays no dividends, providing an excellent environment to test the sensitivity of a corridor model. High price dynamics drastically increase the probability of breaching the barriers, which should be reflected in a relatively low option premium.
 
-**Charakterystyka opcji**
+**Option Characteristics**
 
-- **Instrument bazowy:** Akcje Tesla (TSLA).
-- **Warunek wypłaty:** Opcja wypłaca wartość ceny akcji ($S_T$) w dacie
-  wygaśnięcia $T$, jeżeli $X_L < S_T < X_U$.
-- **Wypłata zerowa:** W przypadku wyjścia ceny poza ustalony korytarz,
-  opcja wygasa bez wartośći.
+- **Underlying Asset:** Tesla stock (TSLA).
+- **Payout Condition:** The option pays the terminal stock price ($S_T$) at maturity $T$ if $X_L < S_T < X_U$.
+- **Zero Payout:** If the price breaches the corridor boundaries, the option expires worthless.
 
-# 2. Pobieanie danych i estymacja parametrów.
+# 2. Data Retrieval and Parameter Estimation
 
-W tej sekcji skrypt automatycznie pobiera dane historyczne dla spółki
-Tesla.
+In this section, the script automatically retrieves historical data for Tesla.
 
-**Zestawienie parametrów na dzień 2026-05-05**
+**Parameter Summary as of 2026-05-05**
 
-- Cena instrumentu ($S_0$): 389.37 USD
-- Stopa proc.(r): 5.28%
-- Zmienność ($\sigma$): 60.32%
-- Przedział korytarza: \[330.96, 447.78\] USD -
+- Underlying Asset Price ($S_0$): 389.37 USD
+- Risk-Free Rate ($r$): 5.28%
+- Volatility ($\sigma$): 60.32%
+- Corridor Range: \[330.96, 447.78\] USD
 
-# 3. Symulacja Monte Carlo
+# 3. Monte Carlo Simulation
 
-Podstawą symulacji numerycznej jest model Geometrycznego Ruchu Browna
-(GBM), który zakłada log-normalny rozkład stóp zwrotu **Optymalizacja
-obliczeń** Aby zmniejszyć błąd standardowy bez konieczności drastycznego
-zwiększania liczby iteracji, zastosowano technikę zmiennych odbić
-lustrzanych. Polega ona na tym, że dla każdego wylosowanej trajektori
-Rstudio generuje jego dokładne przeciwieństwo (zmienia znak). Pozwala to
-ustabilizować symetrię rozkładu i zwiększa dokładność estymatora.
+The numerical simulation is based on the Geometric Brownian Motion (GBM) model, which assumes a log-normal distribution of returns. 
 
-# 4. Model Hakanssona
+**Computational Optimization:** To reduce the standard error without expanding the number of iterations, an antithetic variates technique was implemented. For every randomly sampled path, the engine generates its exact mirror image (inverting the sign). This stabilizes the symmetry of the distribution and improves estimator precision.
 
-Aby zweryfikować poprawność symulacji MC, wykorzystano model Hakanssona.
-Jest to ścisłe, matematyczne rozwiązanie, będące rozszerzeniem
-klasycznego modelu Blacka-Scholesa dla opcji egzotycznych.
+# 4. Hakansson's Model
 
-# 5. Wyniki i wnioski końcowe
+To validate the accuracy of the Monte Carlo simulation, Hakansson's model was utilized. This provides an exact analytical mathematical solution, extending the classical Black-Scholes framework to exotic path-dependent options.
 
-| Metoda               | Cena opcji (USD) |
-|:---------------------|:-----------------|
-| **Monte Carlo**      | 145.8916         |
-| **Model Hakanssona** | 145.7411         |
+# 5. Results and Final Conclusions
 
-**Podsumowanie:**
+| Method               | Option Price (USD) |
+|:---------------------|:-------------------|
+| **Monte Carlo** | 145.8916           |
+| **Hakansson's Model**| 145.7411           |
 
-- **Poprawność technologiczna** - Wynik uzyskany drogą symulacji Monte
-  Carlo jest wysoce zbieżny z wynikiem analitycznym. Zbieżność ta
-  potwierdza poprawne zaprogramowanie logiki opcji.
-- **Wpływ zmienności na wycenę** - Matematyka modelu poprawnie
-  odzwierciedla realia rynkowe. Inwestorzy oczekują silnych ruchów na
-  walorze takim jak TSLA, co sprawia, że szansa na utrzymanie się ceny w
-  wąskim korytarzu przez okres 3 miesięcy jest niska. W efekcie premia
-  za taką opcję stanowi niewielki ułamek ceny akcji bazowej.
-- **Analiza relacji ceny opcji do ceny rynkowej** - Cena akcji TSLA w
-  dniu wyceny wyniosła 389.37 USD. Obliczona wartość naszej opcji jest
-  od niej drastycznie mniejsza. Posiadanie samej akcji gwarantuje
-  zachowanie kapitału na poziomie jej bieżącej wyceny. Opcja korytarzowa
-  to struktura “wszystko albo nic” rynek bezlitośnie dyskontuje ryzyko
-  przebicia barier, drastycznie obniżając jej cenę bieżącą.
-- **Ograniczenia i słabości modelu** Główną słabością przeprowadzonego
-  badania jest wykorzystanie założeń klasycznego modelu Blacka-Scholesa
-  / Hakanssona. Zakładają one, że zmienność ($\sigma$) oraz stopa
-  procentowa ($r$) są stałe w całym okresie życia opcji. W
-  rzeczywistości rynkowej parametry te są dynamiczne. Co więcej, model
-  Geometrycznego Ruchu Browna (GBM) zakłada ciągłość zmian cen, podczas
-  gdy akcje z sektora technologicznego często doświadczają skoków (luk
-  cenowych).
-- **Cena teoretyczna a rzeczywisty rynek (OTC)** Wyliczona przez nas
-  kwota r round(mc_price, 4) USD to wartość czysto teoretyczna (fair
-  value). Opcje egzotyczne są notowane na rynku pozagiełdowym (OTC). W
-  praktyce rynkowej cena zażądana przez bank inwestycyjny byłaby inna –
-  instytucja doliczyłaby spread (marżę) oraz dodatkową premię za ryzyko
-  nagłych skoków zmienności, co prawdopodobnie wyceniłoby opcję jeszcze
-  niżej z perspektywy sprzedającego.
+**Summary:**
 
-# Literatura
+- **Technological Accuracy:** The result obtained via Monte Carlo simulation is highly convergent with the analytical solution. This convergence confirms the correct implementation of the option's payout logic.
+- **Impact of Volatility on Pricing:** The model's mathematics accurately reflect market realities. Investors anticipate sharp movements in a volatile stock like TSLA, making the probability of the price remaining within a narrow corridor for 3 months quite low. Consequently, the option premium represents only a small fraction of the underlying stock price.
+- **Option Price vs. Market Price Analysis:** The spot price of TSLA on the valuation date was 389.37 USD. The calculated option value is drastically lower. Holding the stock itself guarantees capital preservation tied to its spot performance. The corridor option, being an "All-or-Nothing" structure, ruthlessly discounts the risk of barrier breaches, sharply driving down its present value.
+- **Model Limitations and Weaknesses:** The primary limitation of this study lies in the foundational assumptions of the classical Black-Scholes / Hakansson models. They assume that volatility ($\sigma$) and the risk-free rate ($r$) remain constant over the option's lifespan. In reality, these parameters are highly dynamic. Furthermore, the Geometric Brownian Motion (GBM) model assumes continuous price paths, whereas tech stocks frequently experience gaps (jump risk).
+- **Theoretical Price vs. Real-World OTC Market:** The calculated amount of 145.8916 USD represents a purely theoretical fair value. Exotic options are traded over-the-counter (OTC). In a real market environment, an investment bank would incorporate a wider bid-ask spread and an additional premium for jump risk, likely resulting in a lower valuation from the seller's perspective.
 
-- Hull, J. C. (2021). Options, Futures, and Other Derivatives. Pearson.
-  (Standard rynkowy definiujący matematykę wyceny dla opcji klasycznych
-  i egzotycznych, w tym instrumentów binarnych).
+# References
 
-- Glasserman, P. (2003). Monte Carlo Methods in Financial Engineering.
-  Springer. (Kanoniczne źródło opisujące poprawne modelowanie procesów
-  stochastycznych oraz stosowanie technik redukcji wariancji, takich jak
-  zmienne antytetyczne).
+- Hull, J. C. (2021). Options, Futures, and Other Derivatives. Pearson. (The market standard defining the mathematics of pricing for classical and exotic options, including binary instruments).
+- Glasserman, P. (2003). Monte Carlo Methods in Financial Engineering. Springer. (The canonical source describing correct modeling of stochastic processes and the application of variance reduction techniques, such as antithetic variates).
